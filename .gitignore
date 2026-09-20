@@ -1,0 +1,15 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.vercel/
+.tanstack/
+.grok/*
+!.grok/app-env.json
+artifacts/
+.node_modules.lock
+AGENTS.md
+dist/
+.output/
+*.log
+.DS_Store

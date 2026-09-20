@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Synthsara",
+      "hasCanvas": false,
+      "bodyTextLen": 2174,
+      "bodyTextHash": "99f8141e4894e1f7b2d423da87fe9e1376b6d4afa12d0194ad773d37644c2f29",
+      "bodyTextPrefix": "Synthsara WORTH 0 CHAMBERS The Nave The Mirror The Weaver The Ma",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Synthsara",
+      "hasCanvas": false,
+      "bodyTextLen": 2075,
+      "bodyTextHash": "4ccf1f84ae54abdbfaaf3e6d96a824ecdd88f1e39834d5d1d0b8a006236abd4e",
+      "bodyTextPrefix": "Synthsara NODE ZERO · LOCAL FIRST Synthsara She asked for consis",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-built.json",
+  "divergesFromBaseline": false,
+  "baselineReasons": []
+}
