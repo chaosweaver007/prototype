@@ -74,7 +74,7 @@ export type CommuneResult =
 export const commune = createServerFn({ method: "POST" })
   .validator((input: unknown) => InputSchema.parse(input))
   .handler(async ({ data }): Promise<CommuneResult> => {
-    const apiKey = process.env.XAI_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return { ok: false, error: "AI is not available in this environment" };
     }
@@ -93,28 +93,37 @@ export const commune = createServerFn({ method: "POST" })
             content: m.content.slice(0, 2500),
           }));
 
-    const res = await fetch("https://api.x.ai/v1/chat/completions", {
+    const res = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "grok-4.5",
-        temperature: data.voice === "steven" ? 0.55 : 0.8,
-        max_tokens: 500,
-        messages: [{ role: "system", content: system }, ...messages],
+        model: process.env.OPENAI_MODEL ?? "gpt-6-astra",
+        instructions: system,
+        input: messages,
+        max_output_tokens: 500,
       }),
     });
 
     if (!res.ok) {
-      return { ok: false, error: `xAI API error ${res.status}` };
+      return { ok: false, error: `OpenAI API error ${res.status}` };
     }
 
     const body = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
+      output?: {
+        type?: string;
+        content?: { type?: string; text?: string }[];
+      }[];
     };
-    const text = body.choices?.[0]?.message?.content?.trim() ?? "";
+    const text =
+      body.output
+        ?.flatMap((item) => item.content ?? [])
+        .filter((item) => item.type === "output_text")
+        .map((item) => item.text ?? "")
+        .join("")
+        .trim() ?? "";
     if (!text) return { ok: false, error: "Empty response" };
     return { ok: true, text, source: "live" };
   });
