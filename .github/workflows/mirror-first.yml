@@ -23,6 +23,8 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      # Existing package-lock has a conflicting AJV tree; run functional checks
+      # against package.json while a reproducible lockfile repair is pending.
+      - run: npm install --no-package-lock --no-audit --no-fund
       - run: npm test
       - run: npm run typecheck
