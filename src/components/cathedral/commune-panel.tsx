@@ -6,7 +6,7 @@ import { localReflection, reviewUds } from "@/lib/synthsara/content";
 import { useSynthsara } from "@/lib/synthsara/store";
 import { useHydrated } from "@/lib/synthsara/use-hydrated";
 import type { Voice } from "@/lib/synthsara/types";
-import type { MirrorMode } from "@/lib/synthsara/mirror-first";
+import { MIRROR_FIRST_VERSION, type MirrorMode } from "@/lib/synthsara/mirror-first";
 import { cn, formatWhen } from "@/lib/utils";
 
 const PLACEHOLDER: Record<Voice, string> = {
@@ -86,7 +86,13 @@ export function CommunePanel({
     try {
       // Do not even invoke the server function when the visitor chose local mode.
       const result = remoteAllowed
-        ? await commune({ data: { voice, messages: history } })
+        ? await commune({
+          data: {
+            voice,
+            messages: history,
+            ...(voice === "sarah" ? { mirrorConsentVersion: MIRROR_FIRST_VERSION } : {}),
+          },
+        })
         : ({ ok: false, error: "Local-only consent" } as const);
       if (requestEpoch.current !== epoch || useSynthsara.getState().killed) return;
       const textOut = result.ok ? result.text : challengeId
