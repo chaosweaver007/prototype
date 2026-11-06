@@ -23,7 +23,7 @@ function ConsentPage() {
       <ChamberHeader
         kicker="Sovereignty"
         title="Consent Vault"
-        lede="Private by default. Every optional scope is granular and revocable. The kill switch closes them all. Nothing here leaves this device."
+        lede="Optional scopes start off for new visitors. The kill switch closes them all. Live AI requests, if separately consented to in the Mirror, are sent to a remote service."
       />
 
       <NodeGate>
