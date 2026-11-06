@@ -6,7 +6,7 @@ import { localReflection, reviewUds } from "@/lib/synthsara/content";
 import { useSynthsara } from "@/lib/synthsara/store";
 import { useHydrated } from "@/lib/synthsara/use-hydrated";
 import type { Voice } from "@/lib/synthsara/types";
-import { MIRROR_FIRST_VERSION, type MirrorMode } from "@/lib/synthsara/mirror-first";
+import { MIRROR_FIRST_VERSION, mirrorMayUseLiveService, type MirrorMode } from "@/lib/synthsara/mirror-first";
 import { cn, formatWhen } from "@/lib/utils";
 
 const PLACEHOLDER: Record<Voice, string> = {
@@ -41,10 +41,11 @@ export function CommunePanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  const killed = useSynthsara((s) => s.killed);
   const turns = useRef(0);
   const requestEpoch = useRef(0);
   const [challengeTarget, setChallengeTarget] = useState<string | null>(null);
-  const remoteAllowed = voice !== "sarah" || mirrorSessionMode === "live";
+  const remoteAllowed = voice !== "sarah" || mirrorMayUseLiveService(mirrorSessionMode ?? "awaiting", killed);
 
   useEffect(() => {
     return () => {
