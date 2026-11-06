@@ -49,11 +49,12 @@ type Actions = {
 };
 
 const defaultConsent = (): ConsentState => ({
-  mirror_memory: true,
-  witness_logging: true,
-  worth_recognition: true,
+  // New nodes have no optional permissions until actively granted.
+  mirror_memory: false,
+  witness_logging: false,
+  worth_recognition: false,
   collective_learning: false,
-  rtme_processing: true,
+  rtme_processing: false,
 });
 
 function emptyThreads(): Record<Voice, ChatMessage[]> {
