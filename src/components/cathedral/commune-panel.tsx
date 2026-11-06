@@ -6,6 +6,7 @@ import { localReflection, reviewUds } from "@/lib/synthsara/content";
 import { useSynthsara } from "@/lib/synthsara/store";
 import { useHydrated } from "@/lib/synthsara/use-hydrated";
 import type { Voice } from "@/lib/synthsara/types";
+import type { MirrorMode } from "@/lib/synthsara/mirror-first";
 import { cn, formatWhen } from "@/lib/utils";
 
 const PLACEHOLDER: Record<Voice, string> = {
@@ -23,9 +24,12 @@ const EMPTY: Record<Voice, string> = {
 export function CommunePanel({
   voice,
   onMeaningful,
+  mirrorSessionMode,
 }: {
   voice: Voice;
   onMeaningful?: () => void;
+  /** Sarah AI fails closed to local mode unless a session explicitly permits live processing. */
+  mirrorSessionMode?: MirrorMode;
 }) {
   const threadAll = useSynthsara((s) => s.threads[voice]);
   const hydrated = useHydrated();
@@ -38,6 +42,16 @@ export function CommunePanel({
   const [error, setError] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const turns = useRef(0);
+  const requestEpoch = useRef(0);
+  const [challengeTarget, setChallengeTarget] = useState<string | null>(null);
+  const remoteAllowed = voice !== "sarah" || mirrorSessionMode === "live";
+
+  useEffect(() => {
+    return () => {
+      // An ended session must not write a late network response into the local ledger.
+      requestEpoch.current += 1;
+    };
+  }, []);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
@@ -46,10 +60,20 @@ export function CommunePanel({
   async function send(text: string) {
     const content = text.trim();
     if (!content || busy) return;
+    const epoch = ++requestEpoch.current;
+    const challengeId = challengeTarget;
+    setChallengeTarget(null);
     setDraft("");
     setError(null);
     setBusy(true);
     appendMessage(voice, { role: "user", content });
+    if (voice === "sarah" && challengeId) {
+      witnessEvent({
+        kind: "mirror-challenge",
+        summary: "A Mirror reflection was challenged",
+        meta: { assistant_message_id: challengeId },
+      });
+    }
     turns.current += 1;
 
     const history = [
@@ -60,10 +84,14 @@ export function CommunePanel({
     ];
 
     try {
-      const result = await commune({
-        data: { voice, messages: history },
-      });
-      const textOut = result.ok ? result.text : localReflection(voice, content);
+      // Do not even invoke the server function when the visitor chose local mode.
+      const result = remoteAllowed
+        ? await commune({ data: { voice, messages: history } })
+        : ({ ok: false, error: "Local-only consent" } as const);
+      if (requestEpoch.current !== epoch || useSynthsara.getState().killed) return;
+      const textOut = result.ok ? result.text : challengeId
+        ? "Thank you for challenging that reflection. My earlier interpretation may have missed context. I cannot verify your correction from a local template; please identify the observation and your alternate reading so the next reflection can be evaluated."
+        : localReflection(voice, content);
       const uds = reviewUds(textOut);
       const saved = appendMessage(voice, {
         role: "assistant",
@@ -80,14 +108,15 @@ export function CommunePanel({
               : "A Harmonizer session continued",
         meta: { voice, receipt: saved.id.slice(0, 8) },
       });
-      if (!result.ok) setError("Live communion unavailable. Local reflection held the gate.");
+      if (remoteAllowed && !result.ok) setError("Live AI unavailable. A local template responded instead.");
       if (turns.current === 3) onMeaningful?.();
     } catch {
+      if (requestEpoch.current !== epoch || useSynthsara.getState().killed) return;
       const textOut = localReflection(voice, content);
       appendMessage(voice, { role: "assistant", content: textOut, uds: reviewUds(textOut) });
-      setError("Live communion unavailable. Local reflection held the gate.");
+      if (remoteAllowed) setError("Live AI unavailable. A local template responded instead.");
     } finally {
-      setBusy(false);
+      if (requestEpoch.current === epoch) setBusy(false);
     }
   }
 
@@ -133,6 +162,19 @@ export function CommunePanel({
             >
               {m.content}
             </div>
+            {voice === "sarah" && m.role === "assistant" ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setChallengeTarget(m.id);
+                  setDraft("Please reconsider this reflection. You may have missed: ");
+                }}
+              >
+                Challenge this reflection
+              </Button>
+            ) : null}
             {m.uds ? (
               <p className="mt-1.5 text-[11px] text-muted-foreground">
                 {m.uds.notes[0]}
@@ -147,6 +189,11 @@ export function CommunePanel({
       </div>
 
       <form onSubmit={onSubmit} className="mt-5 space-y-3">
+        {voice === "sarah" && challengeTarget ? (
+          <p className="text-xs text-muted-foreground">
+            Challenging an earlier reflection. Your correction will be a new message, not a silent rewrite.
+          </p>
+        ) : null}
         {error ? <p className="text-xs text-muted-foreground">{error}</p> : null}
         <Textarea
           value={draft}
