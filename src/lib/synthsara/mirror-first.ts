@@ -31,6 +31,6 @@ export function acceptsMirrorConsentAssertion(voice: string, version?: string): 
 
 export function mirrorDataNotice(mode: MirrorMode): string {
   return mode === "live"
-    ? "Live AI: your message and recent conversation context are sent to the Synthsara server and, when configured, to its AI provider. Do not enter information you do not wish to transmit. If live service is unavailable, replies fall back to the local template."
+    ? "Live AI: your message and recent conversation context are sent to the Synthsara server and, when configured, to its AI provider. For consent enforcement, the server stores a short-lived receipt with your account identifier, token digest, grant time and any revocation event—even when optional Witness logging is off. It does not store your conversation in this receipt. Do not enter information you do not wish to transmit. If live service is unavailable, replies fall back to the local template."
     : "Local reflection: responses use a deterministic template in this browser. Your Mirror text is not sent to the AI service. Chat history is only retained across reloads if you enable Mirror memory in the Consent Vault.";
 }
