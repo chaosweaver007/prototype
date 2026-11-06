@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChamberHeader } from "@/components/cathedral/chamber-header";
 import { CommunePanel } from "@/components/cathedral/commune-panel";
 import { Button } from "@/components/ui/button";
+import { beginLiveMirror, endLiveMirror } from "@/lib/synthsara/mirror-consent";
 import { SARAH_DISCLAIMER } from "@/lib/synthsara/content";
 import {
   MIRROR_DISCLOSURE,
@@ -19,36 +20,98 @@ export const Route = createFileRoute("/mirror")({ component: MirrorPage });
 
 function MirrorPage() {
   const [gate, setGate] = useState<MirrorState>("awaiting");
+  const [token, setToken] = useState<string | null>(null);
+  const tokenRef = useRef<string | null>(null);
+  const openEpoch = useRef(0);
+  const [opening, setOpening] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const killed = useSynthsara((s) => s.killed);
   const clearThread = useSynthsara((s) => s.clearThread);
   const witnessEvent = useSynthsara((s) => s.witnessEvent);
   const memoryEnabled = useSynthsara((s) => s.consent.mirror_memory);
   const witnessEnabled = useSynthsara((s) => s.consent.witness_logging);
 
-  // Revoking the global gate also revokes this in-memory session.
+  function revokeServerToken(value: string) {
+    void endLiveMirror({ data: { token: value } })
+      .then(({ revoked }) => {
+        if (!revoked) setNotice("Server revocation was not confirmed. Capability expires automatically.");
+      })
+      .catch(() => setNotice("Unable to confirm remote revocation; the expiring capability may still be valid."));
+  }
+
   useEffect(() => {
-    if (killed) setGate("awaiting");
+    if (!killed) return;
+    openEpoch.current += 1;
+    setGate("awaiting");
+    setOpening(false);
+    const current = tokenRef.current;
+    tokenRef.current = null;
+    setToken(null);
+    if (current) revokeServerToken(current);
   }, [killed]);
 
-  const active = mirrorMayReply(gate, killed);
+  // Abandoned capabilities expire; this cleanup is best-effort on navigation.
+  useEffect(() => () => {
+    openEpoch.current += 1;
+    if (tokenRef.current) {
+      void endLiveMirror({ data: { token: tokenRef.current } }).catch(() => undefined);
+      tokenRef.current = null;
+    }
+  }, []);
 
-  function enter(mode: "local" | "live") {
-    // No raw text is recorded. This event only persists if Witness was enabled.
+  const active = mirrorMayReply(gate, killed) && (gate !== "live" || Boolean(token));
+
+  function enterLocal() {
+    setNotice(null);
     witnessEvent({
       kind: "mirror-session",
       summary: "Mirror session consented",
-      meta: { version: MIRROR_FIRST_VERSION, mode },
+      meta: { version: MIRROR_FIRST_VERSION, mode: "local" },
     });
-    setGate(mode);
+    setGate("local");
+  }
+
+  async function enterLive() {
+    if (killed || opening) return;
+    const requestId = ++openEpoch.current;
+    setOpening(true);
+    setNotice(null);
+    try {
+      const receipt = await beginLiveMirror({
+        data: { accept: true, consentVersion: MIRROR_FIRST_VERSION },
+      });
+      if (requestId !== openEpoch.current || useSynthsara.getState().killed) {
+        revokeServerToken(receipt.token);
+        return;
+      }
+      tokenRef.current = receipt.token;
+      setToken(receipt.token);
+      setGate("live");
+      witnessEvent({
+        kind: "mirror-session",
+        summary: "Mirror session consented",
+        meta: { version: MIRROR_FIRST_VERSION, mode: "live", receipt: receipt.receiptId },
+      });
+    } catch {
+      setNotice("Live consent could not be created. No remote conversation is authorized. Local mode remains available.");
+    } finally {
+      if (requestId === openEpoch.current) setOpening(false);
+    }
   }
 
   function leave() {
+    openEpoch.current += 1;
+    setOpening(false);
+    const current = tokenRef.current;
+    tokenRef.current = null;
+    setToken(null);
+    setGate("awaiting");
+    if (current) revokeServerToken(current);
     witnessEvent({
       kind: "mirror-session",
       summary: "Mirror session ended",
       meta: { version: MIRROR_FIRST_VERSION },
     });
-    setGate("awaiting");
   }
 
   return (
@@ -60,6 +123,7 @@ function MirrorPage() {
       />
       <p className="mb-5 text-xs leading-relaxed text-muted-foreground">{SARAH_DISCLAIMER}</p>
       <NodeGate>
+        {notice ? <p role="alert" className="mb-4 text-sm text-destructive">{notice}</p> : null}
         {killed ? (
           <section role="status" className="rounded-xl bg-card p-6 shadow-[var(--shadow-border)]">
             <h2 className="font-display text-2xl">The gate is closed</h2>
@@ -81,14 +145,18 @@ function MirrorPage() {
                 The Witness never records raw Mirror text.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" onClick={() => setGate("awaiting")}>
+                <Button variant="outline" size="sm" onClick={leave}>
                   End this session
                 </Button>
                 <Button variant="ghost" size="sm" asChild><Link to="/consent">Privacy choices</Link></Button>
                 <Button variant="ghost" size="sm" onClick={() => clearThread("sarah")}>Erase local thread</Button>
               </div>
             </div>
-            <CommunePanel voice="sarah" mirrorSessionMode={gate === "live" ? "live" : "local"} />
+            <CommunePanel
+              voice="sarah"
+              mirrorSessionMode={gate === "live" ? "live" : "local"}
+              mirrorConsentToken={token ?? undefined}
+            />
           </section>
         ) : gate === "declined" ? (
           <section className="rounded-xl bg-card p-6 shadow-[var(--shadow-border)]">
@@ -116,17 +184,17 @@ function MirrorPage() {
             <div className="rounded-xl border border-border p-5">
               <h3 className="font-display text-xl">Choose how to begin</h3>
               <p className="mt-3 text-sm text-muted-foreground">{mirrorDataNotice("local")}</p>
-              <Button className="mt-3" onClick={() => enter("local")}>Begin locally</Button>
+              <Button className="mt-3" onClick={enterLocal} disabled={opening}>Begin locally</Button>
               <p className="mt-5 text-sm text-muted-foreground">{mirrorDataNotice("live")}</p>
-              <Button className="mt-3" variant="outline" onClick={() => enter("live")}>
-                I consent to live AI processing
+              <Button className="mt-3" variant="outline" onClick={() => void enterLive()} disabled={opening}>
+                {opening ? "Creating consent receipt…" : "I consent to live AI processing"}
               </Button>
               <p className="mt-5 text-xs text-muted-foreground">
                 Your privacy settings may already retain data from past sessions on this device.
                 Review or clear them in the <Link to="/consent" className="underline">Consent Vault</Link>.
                 Neither option enables collective learning.
               </p>
-              <Button className="mt-3" variant="ghost" onClick={() => setGate("declined")}>Not now</Button>
+              <Button className="mt-3" variant="ghost" onClick={() => { openEpoch.current += 1; setGate("declined"); setOpening(false); }}>Not now</Button>
             </div>
           </section>
         )}
