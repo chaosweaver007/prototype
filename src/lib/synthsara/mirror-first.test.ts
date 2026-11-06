@@ -34,3 +34,10 @@ test("disclosure distinguishes local reflection from a networked request", () =>
   assert.ok(MIRROR_DISCLOSURE.some((item) => item.includes("mistaken")));
   assert.equal(MIRROR_FIRST_VERSION, "MIRROR-FIRST-001");
 });
+
+test("live Sarah endpoint rejects missing or invalid consent assertion", () => {
+  assert.equal(acceptsMirrorConsentAssertion("sarah"), false);
+  assert.equal(acceptsMirrorConsentAssertion("sarah", "stale-policy"), false);
+  assert.equal(acceptsMirrorConsentAssertion("sarah", MIRROR_FIRST_VERSION), true);
+  assert.equal(acceptsMirrorConsentAssertion("steven"), true);
+});
