@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { MIRROR_FIRST_VERSION, acceptsMirrorConsentAssertion } from "./mirror-first";
+import { authMiddleware } from "../auth/middleware";
 
 const MessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -11,7 +11,7 @@ const InputSchema = z.object({
   voice: z.enum(["sarah", "steven", "unified", "rtme"]),
   messages: z.array(MessageSchema).max(8),
   intention: z.string().max(1200).optional(),
-  mirrorConsentVersion: z.literal(MIRROR_FIRST_VERSION).optional(),
+  mirrorConsentToken: z.string().max(200).optional(),
 });
 
 const SYSTEMS = {
@@ -74,12 +74,14 @@ export type CommuneResult =
   | { ok: false; error: string };
 
 export const commune = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
   .validator((input: unknown) => InputSchema.parse(input))
-  .handler(async ({ data }): Promise<CommuneResult> => {
-    // Server-side fail-closed check. This is a client assertion, not a
-    // cryptographically bound consent receipt; hardening is tracked separately.
-    if (!acceptsMirrorConsentAssertion(data.voice, data.mirrorConsentVersion)) {
-      return { ok: false, error: "Gate Zero requires live Mirror consent." };
+  .handler(async ({ data, context }): Promise<CommuneResult> => {
+    if (data.voice === "sarah") {
+      const { assertLiveMirrorConsent } = await import("./mirror-consent.server");
+      if (!(await assertLiveMirrorConsent(data.mirrorConsentToken, context.userId))) {
+        return { ok: false, error: "Gate Zero requires a valid, unexpired and unrevoked live Mirror consent capability." };
+      }
     }
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
