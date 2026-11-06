@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { MIRROR_FIRST_VERSION } from "./mirror-first";
+import { MIRROR_FIRST_VERSION, acceptsMirrorConsentAssertion } from "./mirror-first";
 
 const MessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
