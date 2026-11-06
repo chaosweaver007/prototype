@@ -29,4 +29,5 @@ jobs:
       # Focused no-dependency gate tests also run in the ordinary npm test suite.
       # The full suite currently depends on untracked .grok/skills/og/SKILL.md.
       - run: node --experimental-strip-types --test src/lib/synthsara/mirror-first.test.ts
+      - run: node --test scripts/mirror-consent-db.test.mjs
       - run: npm run typecheck
