@@ -78,7 +78,7 @@ export const commune = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<CommuneResult> => {
     // Server-side fail-closed check. This is a client assertion, not a
     // cryptographically bound consent receipt; hardening is tracked separately.
-    if (data.voice === "sarah" && data.mirrorConsentVersion !== MIRROR_FIRST_VERSION) {
+    if (!acceptsMirrorConsentAssertion(data.voice, data.mirrorConsentVersion)) {
       return { ok: false, error: "Gate Zero requires live Mirror consent." };
     }
     const apiKey = process.env.OPENAI_API_KEY;
