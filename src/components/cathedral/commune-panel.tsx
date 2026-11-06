@@ -6,7 +6,7 @@ import { localReflection, reviewUds } from "@/lib/synthsara/content";
 import { useSynthsara } from "@/lib/synthsara/store";
 import { useHydrated } from "@/lib/synthsara/use-hydrated";
 import type { Voice } from "@/lib/synthsara/types";
-import { MIRROR_FIRST_VERSION, mirrorMayUseLiveService, type MirrorMode } from "@/lib/synthsara/mirror-first";
+import { mirrorMayUseLiveService, type MirrorMode } from "@/lib/synthsara/mirror-first";
 import { cn, formatWhen } from "@/lib/utils";
 
 const PLACEHOLDER: Record<Voice, string> = {
@@ -25,11 +25,13 @@ export function CommunePanel({
   voice,
   onMeaningful,
   mirrorSessionMode,
+  mirrorConsentToken,
 }: {
   voice: Voice;
   onMeaningful?: () => void;
   /** Sarah AI fails closed to local mode unless a session explicitly permits live processing. */
   mirrorSessionMode?: MirrorMode;
+  mirrorConsentToken?: string;
 }) {
   const threadAll = useSynthsara((s) => s.threads[voice]);
   const hydrated = useHydrated();
@@ -45,14 +47,15 @@ export function CommunePanel({
   const turns = useRef(0);
   const requestEpoch = useRef(0);
   const [challengeTarget, setChallengeTarget] = useState<string | null>(null);
-  const remoteAllowed = voice !== "sarah" || mirrorMayUseLiveService(mirrorSessionMode ?? "awaiting", killed);
+  const remoteAllowed = voice !== "sarah" ||
+    (mirrorMayUseLiveService(mirrorSessionMode ?? "awaiting", killed) && Boolean(mirrorConsentToken));
 
   useEffect(() => {
     return () => {
-      // An ended session must not write a late network response into the local ledger.
+      // End, revocation, or token replacement invalidates late replies.
       requestEpoch.current += 1;
     };
-  }, []);
+  }, [mirrorConsentToken]);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
@@ -91,7 +94,7 @@ export function CommunePanel({
           data: {
             voice,
             messages: history,
-            ...(voice === "sarah" ? { mirrorConsentVersion: MIRROR_FIRST_VERSION } : {}),
+            ...(voice === "sarah" ? { mirrorConsentToken } : {}),
           },
         })
         : ({ ok: false, error: "Local-only consent" } as const);
