@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   MIRROR_DISCLOSURE,
   MIRROR_FIRST_VERSION,
+  acceptsMirrorConsentAssertion,
   mirrorDataNotice,
   mirrorMayReply,
   mirrorMayUseLiveService,
