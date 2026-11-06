@@ -41,7 +41,7 @@ The Witness layer remains a local editable store, not an immutable distributed l
 ### Tests / acceptance
 
 ```bash
-npm ci
+npm install --no-package-lock  # temporary: current repository lockfile fails npm ci
 npm test
 npm run typecheck
 npm run build
