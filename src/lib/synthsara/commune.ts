@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { MIRROR_FIRST_VERSION } from "./mirror-first";
 
 const MessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -10,6 +11,7 @@ const InputSchema = z.object({
   voice: z.enum(["sarah", "steven", "unified", "rtme"]),
   messages: z.array(MessageSchema).max(8),
   intention: z.string().max(1200).optional(),
+  mirrorConsentVersion: z.literal(MIRROR_FIRST_VERSION).optional(),
 });
 
 const SYSTEMS = {
@@ -74,6 +76,11 @@ export type CommuneResult =
 export const commune = createServerFn({ method: "POST" })
   .validator((input: unknown) => InputSchema.parse(input))
   .handler(async ({ data }): Promise<CommuneResult> => {
+    // Server-side fail-closed check. This is a client assertion, not a
+    // cryptographically bound consent receipt; hardening is tracked separately.
+    if (data.voice === "sarah" && data.mirrorConsentVersion !== MIRROR_FIRST_VERSION) {
+      return { ok: false, error: "Gate Zero requires live Mirror consent." };
+    }
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return { ok: false, error: "AI is not available in this environment" };
