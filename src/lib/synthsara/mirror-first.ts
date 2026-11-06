@@ -22,6 +22,13 @@ export function mirrorMayUseLiveService(state: MirrorState, killed: boolean): bo
   return !killed && state === "live";
 }
 
+/** Minimal server boundary: rejects absent or invalid UI consent assertions.
+ * This is not a server-authenticated consent receipt.
+ */
+export function acceptsMirrorConsentAssertion(voice: string, version?: string): boolean {
+  return voice !== "sarah" || version === MIRROR_FIRST_VERSION;
+}
+
 export function mirrorDataNotice(mode: MirrorMode): string {
   return mode === "live"
     ? "Live AI: your message and recent conversation context are sent to the Synthsara server and, when configured, to its AI provider. Do not enter information you do not wish to transmit. If live service is unavailable, replies fall back to the local template."
