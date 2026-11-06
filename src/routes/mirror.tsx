@@ -20,8 +20,8 @@ export const Route = createFileRoute("/mirror")({ component: MirrorPage });
 function MirrorPage() {
   const [gate, setGate] = useState<MirrorState>("awaiting");
   const killed = useSynthsara((s) => s.killed);
-  const addWorth = useSynthsara((s) => s.addWorth);
   const clearThread = useSynthsara((s) => s.clearThread);
+  const witnessEvent = useSynthsara((s) => s.witnessEvent);
   const memoryEnabled = useSynthsara((s) => s.consent.mirror_memory);
   const witnessEnabled = useSynthsara((s) => s.consent.witness_logging);
 
@@ -31,6 +31,25 @@ function MirrorPage() {
   }, [killed]);
 
   const active = mirrorMayReply(gate, killed);
+
+  function enter(mode: "local" | "live") {
+    // No raw text is recorded. This event only persists if Witness was enabled.
+    witnessEvent({
+      kind: "mirror-session",
+      summary: "Mirror session consented",
+      meta: { version: MIRROR_FIRST_VERSION, mode },
+    });
+    setGate(mode);
+  }
+
+  function leave() {
+    witnessEvent({
+      kind: "mirror-session",
+      summary: "Mirror session ended",
+      meta: { version: MIRROR_FIRST_VERSION },
+    });
+    setGate("awaiting");
+  }
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -69,10 +88,7 @@ function MirrorPage() {
                 <Button variant="ghost" size="sm" onClick={() => clearThread("sarah")}>Erase local thread</Button>
               </div>
             </div>
-            <CommunePanel voice="sarah" mirrorSessionMode={gate === "live" ? "live" : "local"} onMeaningful={() => {
-              // addWorth itself checks explicit WORTH consent; no points for refusal.
-              addWorth({ amount: 3, reason: "Inner work in the Mirror", source: "mirror" });
-            }} />
+            <CommunePanel voice="sarah" mirrorSessionMode={gate === "live" ? "live" : "local"} />
           </section>
         ) : gate === "declined" ? (
           <section className="rounded-xl bg-card p-6 shadow-[var(--shadow-border)]">
@@ -100,9 +116,9 @@ function MirrorPage() {
             <div className="rounded-xl border border-border p-5">
               <h3 className="font-display text-xl">Choose how to begin</h3>
               <p className="mt-3 text-sm text-muted-foreground">{mirrorDataNotice("local")}</p>
-              <Button className="mt-3" onClick={() => setGate("local")}>Begin locally</Button>
+              <Button className="mt-3" onClick={() => enter("local")}>Begin locally</Button>
               <p className="mt-5 text-sm text-muted-foreground">{mirrorDataNotice("live")}</p>
-              <Button className="mt-3" variant="outline" onClick={() => setGate("live")}>
+              <Button className="mt-3" variant="outline" onClick={() => enter("live")}>
                 I consent to live AI processing
               </Button>
               <p className="mt-5 text-xs text-muted-foreground">
