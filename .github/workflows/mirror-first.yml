@@ -1,0 +1,33 @@
+name: Mirror First CI
+
+on:
+  push:
+    branches:
+      - feature/mirror-first-001
+  pull_request:
+    paths:
+      - "src/routes/mirror.tsx"
+      - "src/components/cathedral/commune-panel.tsx"
+      - "src/lib/synthsara/**"
+      - "package.json"
+      - ".github/workflows/mirror-first.yml"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # Existing package-lock has a conflicting AJV tree; run functional checks
+      # against package.json while a reproducible lockfile repair is pending.
+      - run: npm install --no-package-lock --no-audit --no-fund
+      # Focused no-dependency gate tests also run in the ordinary npm test suite.
+      # The full suite currently depends on untracked .grok/skills/og/SKILL.md.
+      - run: node --experimental-strip-types --test src/lib/synthsara/mirror-first.test.ts
+      - run: node --test scripts/mirror-consent-db.test.mjs
+      - run: npm run typecheck
