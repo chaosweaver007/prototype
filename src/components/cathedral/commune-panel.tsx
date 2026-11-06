@@ -118,7 +118,11 @@ export function CommunePanel({
               : "A Harmonizer session continued",
         meta: { voice, receipt: saved.id.slice(0, 8) },
       });
-      if (remoteAllowed && !result.ok) setError("Live AI unavailable. A local template responded instead.");
+      if (remoteAllowed && !result.ok) {
+        setError(result.error.startsWith("Gate Zero")
+          ? "The server rejected or expired this live consent. End the session and consent again to use live AI."
+          : "Live AI unavailable. A local template responded instead.");
+      }
       if (turns.current === 3) onMeaningful?.();
     } catch {
       if (requestEpoch.current !== epoch || useSynthsara.getState().killed) return;
