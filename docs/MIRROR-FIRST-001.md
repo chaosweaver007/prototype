@@ -48,6 +48,7 @@ The Witness layer remains a local editable store, not an immutable distributed l
 ```bash
 npm install --no-package-lock  # temporary: current repository lockfile fails npm ci
 node --experimental-strip-types --test src/lib/synthsara/mirror-first.test.ts
+node --test scripts/mirror-consent-db.test.mjs
 npm run typecheck
 npm run build
 ```
