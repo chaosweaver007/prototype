@@ -32,6 +32,8 @@ export function CommunePanel({
   const thread = hydrated ? threadAll : [];
   const appendMessage = useSynthsara((s) => s.appendMessage);
   const clearThread = useSynthsara((s) => s.clearThread);
+  const externalAiAllowed = useSynthsara((s) => s.consent.cloud_ai_processing);
+  const killed = useSynthsara((s) => s.killed);
   const witnessEvent = useSynthsara((s) => s.witnessEvent);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -45,7 +47,7 @@ export function CommunePanel({
 
   async function send(text: string) {
     const content = text.trim();
-    if (!content || busy) return;
+    if (!content || busy || killed) return;
     setDraft("");
     setError(null);
     setBusy(true);
@@ -60,9 +62,9 @@ export function CommunePanel({
     ];
 
     try {
-      const result = await commune({
-        data: { voice, messages: history },
-      });
+      const result = externalAiAllowed
+        ? await commune({ data: { voice, messages: history } })
+        : { ok: false as const, error: "Local-only mode" };
       const textOut = result.ok ? result.text : localReflection(voice, content);
       const uds = reviewUds(textOut);
       const saved = appendMessage(voice, {
@@ -80,12 +82,12 @@ export function CommunePanel({
               : "A Harmonizer session continued",
         meta: { voice, receipt: saved.id.slice(0, 8) },
       });
-      if (!result.ok) setError("Live communion unavailable. Local reflection held the gate.");
+      if (externalAiAllowed && !result.ok) setError("Live communion unavailable. Local reflection held the gate.");
       if (turns.current === 3) onMeaningful?.();
     } catch {
       const textOut = localReflection(voice, content);
       appendMessage(voice, { role: "assistant", content: textOut, uds: reviewUds(textOut) });
-      setError("Live communion unavailable. Local reflection held the gate.");
+      if (externalAiAllowed) setError("Live communion unavailable. Local reflection held the gate.");
     } finally {
       setBusy(false);
     }
@@ -147,6 +149,13 @@ export function CommunePanel({
       </div>
 
       <form onSubmit={onSubmit} className="mt-5 space-y-3">
+        <p className="text-xs text-muted-foreground">
+          {killed
+            ? "Kill switch engaged. Reflection is closed until consent is restored."
+            : externalAiAllowed
+              ? "External AI enabled. Messages may be sent to this app server and a configured AI provider."
+              : "Local-only reflection. Your message is not sent to an AI server."}
+        </p>
         {error ? <p className="text-xs text-muted-foreground">{error}</p> : null}
         <Textarea
           value={draft}
@@ -155,7 +164,7 @@ export function CommunePanel({
           placeholder={PLACEHOLDER[voice]}
           rows={3}
           maxLength={2000}
-          disabled={busy}
+          disabled={busy || killed}
           aria-label="Message"
         />
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -168,7 +177,7 @@ export function CommunePanel({
           >
             Clear thread
           </Button>
-          <Button type="submit" disabled={busy || draft.trim().length === 0}>
+          <Button type="submit" disabled={busy || killed || draft.trim().length === 0}>
             Commune
           </Button>
         </div>
