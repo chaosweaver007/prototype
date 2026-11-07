@@ -1,0 +1,38 @@
+name: Prepare secure Synthsara app preview
+on:
+  push:
+    branches: [feat/real-synthsara-preview-2026-11-06]
+    paths: [.github/workflows/refresh-tanstack-lock.yml]
+permissions:
+  contents: write
+jobs:
+  upgrade-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: true
+      - name: Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Refresh vulnerable TanStack Start version and lockfile
+        run: npm install --package-lock-only --ignore-scripts --save-exact '@tanstack/react-start@1.168.60'
+      - name: Commit package and lockfile updates
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'fix(security): upgrade vulnerable TanStack Start and lockfile'
+            git push origin HEAD:feat/real-synthsara-preview-2026-11-06
+          fi
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Production build
+        run: npm run build
