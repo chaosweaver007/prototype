@@ -54,6 +54,7 @@ const defaultConsent = (): ConsentState => ({
   worth_recognition: true,
   collective_learning: false,
   rtme_processing: true,
+  cloud_ai_processing: false,
 });
 
 function emptyThreads(): Record<Voice, ChatMessage[]> {
