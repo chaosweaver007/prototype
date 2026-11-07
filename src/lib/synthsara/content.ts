@@ -28,6 +28,11 @@ export const OPTIONAL_SCOPES: {
     detail: "Allow the Manifester to turn an intention into a vow and a next action.",
   },
   {
+    id: "cloud_ai_processing",
+    label: "External AI processing",
+    detail: "Off by default. Enabling this allows Mirror, Weaver, and Manifester text to be sent to the app server, and to an AI provider when one is configured. You can turn it off anytime.",
+  },
+  {
     id: "collective_learning",
     label: "Collective learning",
     detail: "Off by default. Patterns never leave this node in the present build.",

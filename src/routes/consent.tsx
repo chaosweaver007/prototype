@@ -17,13 +17,14 @@ function ConsentPage() {
   const setScope = useSynthsara((s) => s.setScope);
   const killSwitch = useSynthsara((s) => s.killSwitch);
   const restoreDefaults = useSynthsara((s) => s.restoreDefaults);
+  const eraseNode = useSynthsara((s) => s.eraseNode);
 
   return (
     <div className="mx-auto max-w-2xl">
       <ChamberHeader
         kicker="Sovereignty"
         title="Consent Vault"
-        lede="Private by default. Every optional scope is granular and revocable. The kill switch closes them all. Nothing here leaves this device."
+        lede="Your local records stay on this browser. Each optional scope can be revoked. External AI processing is off by default and explicitly disclosed if enabled."
       />
 
       <NodeGate>
@@ -72,6 +73,16 @@ function ConsentPage() {
         </Button>
         <Button variant="outline" onClick={restoreDefaults}>
           Restore defaults
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => {
+            if (window.confirm("Erase all local Synthsara node records on this browser? This cannot be undone.")) {
+              eraseNode();
+            }
+          }}
+        >
+          Erase local node
         </Button>
       </div>
       </NodeGate>

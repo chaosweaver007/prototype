@@ -26,6 +26,7 @@ function parseManifest(text: string, intention: string) {
 
 function RtmePage() {
   const enabled = useSynthsara((s) => s.consent.rtme_processing);
+  const externalAiAllowed = useSynthsara((s) => s.consent.cloud_ai_processing);
   const manifestations = useSynthsara((s) => s.manifestations);
   const addManifest = useSynthsara((s) => s.addManifest);
   const keepVow = useSynthsara((s) => s.keepVow);
@@ -41,18 +42,20 @@ function RtmePage() {
     setBusy(true);
     setNotice(null);
     let parsed = localManifest(raw);
-    try {
-      const result = await commune({
-        data: {
-          voice: "rtme",
-          messages: [{ role: "user", content: raw }],
-          intention: raw,
-        },
-      });
-      if (result.ok) parsed = parseManifest(result.text, raw);
-      else setNotice("Live engine unavailable. A local vow was formed instead.");
-    } catch {
-      setNotice("Live engine unavailable. A local vow was formed instead.");
+    if (externalAiAllowed) {
+      try {
+        const result = await commune({
+          data: {
+            voice: "rtme",
+            messages: [{ role: "user", content: raw }],
+            intention: raw,
+          },
+        });
+        if (result.ok) parsed = parseManifest(result.text, raw);
+        else setNotice("Live engine unavailable. A local vow was formed instead.");
+      } catch {
+        setNotice("Live engine unavailable. A local vow was formed instead.");
+      }
     }
     addManifest({ intention: raw, ...parsed });
     setIntention("");
@@ -64,7 +67,7 @@ function RtmePage() {
       <ChamberHeader
         kicker="Real-Time Manifesting Engine"
         title="The Manifester"
-        lede="The intention is not stored. It is transmuted: a vow you can keep, a consent test, and one action small enough to finish before the feeling cools."
+        lede="Your intention becomes a vow, a consent test, and a concrete next action. The vow and original intention remain saved in this browser until you clear its local data."
       />
 
       <NodeGate>
@@ -75,6 +78,11 @@ function RtmePage() {
       ) : null}
 
       <form onSubmit={onSubmit} className="mb-12 space-y-3">
+        <p className="text-xs text-muted-foreground">
+          {externalAiAllowed
+            ? "External AI enabled: this intention may be sent to the app server and a configured AI provider."
+            : "Local-only vow formation. No intention is sent to an AI server."}
+        </p>
         <label htmlFor="intention" className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
           Intention
         </label>

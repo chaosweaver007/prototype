@@ -1,0 +1,26 @@
+name: Verify Synthsara Node Zero
+on:
+  push:
+    branches: [feat/real-synthsara-preview-2026-11-06]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  typecheck-build-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Typecheck the interactive application
+        run: npm run typecheck
+      - name: Build the Vercel application
+        run: npm run build
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
