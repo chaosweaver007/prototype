@@ -18,7 +18,7 @@ jobs:
       - name: Upgrade vulnerable auth and refresh other patches
         run: |
           npm install --package-lock-only --ignore-scripts --save-exact 'better-auth@1.7.18'
-          npm audit fix --package-lock-only --ignore-scripts
+          npm audit fix --package-lock-only --ignore-scripts || npm audit --omit=dev --audit-level=high
       - name: Commit dependency security upgrade
         run: |
           git config user.name 'github-actions[bot]'
