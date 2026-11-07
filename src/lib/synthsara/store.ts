@@ -35,6 +35,7 @@ type Actions = {
   setScope: (scope: ConsentScope, value: boolean) => void;
   killSwitch: () => void;
   restoreDefaults: () => void;
+  eraseNode: () => void;
   addWorth: (entry: Omit<WorthEntry, "id" | "at"> & { at?: number }) => void;
   logContribution: (kindId: string, label: string, amount: number) => void;
   vote: (proposalId: string, vote: ProposalVote) => void;
@@ -103,6 +104,25 @@ export const useSynthsara = create<State & Actions>()(
           kind: "consent",
           summary: "Consent restored to private-by-default posture",
         });
+      },
+
+      eraseNode: () => {
+        const closed = Object.fromEntries(
+          OPTIONAL_SCOPES.map((scope) => [scope.id, false]),
+        ) as ConsentState;
+        set({
+          handle: "",
+          consent: closed,
+          killed: true,
+          worth: [],
+          proposals: [],
+          manifestations: [],
+          witness: [],
+          studied: [],
+          threads: emptyThreads(),
+        });
+        // Erasure includes the persistence key itself, not merely an empty ledger.
+        void useSynthsara.persist.clearStorage();
       },
 
       addWorth: (entry) => {
