@@ -5,7 +5,8 @@ export type ConsentScope =
   | "witness_logging"
   | "worth_recognition"
   | "collective_learning"
-  | "rtme_processing";
+  | "rtme_processing"
+  | "cloud_ai_processing";
 
 export type ChatMessage = {
   id: string;
